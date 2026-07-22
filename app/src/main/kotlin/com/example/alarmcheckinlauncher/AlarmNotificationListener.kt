@@ -108,7 +108,22 @@ class AlarmNotificationListener : NotificationListenerService() {
             FileLogger.i("未命中规则（共 ${rules.size} 条），使用默认目标 pkg=$target")
         }
         pushLocalNotification("闹钟响铃(${time ?: "未知时间"}) → 拉起 $targetLabel")
-        launchTarget(target)
+
+        // 关键：先取消闹钟通知，关闭闹钟全屏 Activity
+        // 荣耀闹钟全屏 Activity 由通知的 fullscreen intent 触发，
+        // 取消通知后系统会关闭全屏 Activity，目标 App 才能显示到最前面
+        try {
+            val key = sbn.key
+            cancelNotification(key)
+            FileLogger.i("已取消闹钟通知（关闭全屏界面）key=$key")
+        } catch (e: Exception) {
+            FileLogger.w("取消闹钟通知失败（忽略，继续拉起）", e)
+        }
+
+        // 延迟 500ms 让闹钟全屏 Activity 关闭，再启动目标 App
+        mainHandler.postDelayed({
+            launchTarget(target)
+        }, 500L)
     }
 
     /**
