@@ -225,19 +225,20 @@ class LaunchProxyActivity : Activity() {
         }
     }
 
-    /** 设置越过锁屏 + 点亮屏幕的窗口标志 */
+    /** 设置越过锁屏 + 点亮屏幕的窗口标志（类似闹钟 App 的实现） */
     private fun showOverLockScreen() {
+        // 所有版本都添加窗口标志，确保最大兼容性
+        @Suppress("DEPRECATION")
+        window.addFlags(
+            WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
+                WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD or
+                WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+        )
+        // API 27+ 额外调用新方法（推荐方式）
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(true)
             setTurnScreenOn(true)
-        } else {
-            @Suppress("DEPRECATION")
-            window.addFlags(
-                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
-                    WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
-                    WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD or
-                    WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
-            )
         }
     }
 

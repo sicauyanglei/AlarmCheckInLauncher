@@ -120,10 +120,11 @@ class AlarmNotificationListener : NotificationListenerService() {
             FileLogger.w("取消闹钟通知失败（忽略，继续拉起）", e)
         }
 
-        // 延迟 500ms 让闹钟全屏 Activity 关闭，再启动目标 App
+        // 延迟 800ms 让闹钟全屏 Activity 完全关闭，再启动目标 App
+        // 用 LaunchProxyActivity：能设置锁屏标志、主动解除锁屏、全屏覆盖
         mainHandler.postDelayed({
             launchTarget(target)
-        }, 500L)
+        }, 800L)
     }
 
     /**
@@ -173,129 +174,22 @@ class AlarmNotificationListener : NotificationListenerService() {
             return
         }
 
-        // 检查悬浮窗权限
+        // 通过 LaunchProxyActivity 拉起目标 App：
+        //  - Activity 能设置锁屏标志（FLAG_SHOW_WHEN_LOCKED 等），覆盖在锁屏之上
+        //  - 主动 requestDismissKeyguard 解除锁屏
+        //  - 全屏不透明覆盖任何残留界面
+        //  - 有 SYSTEM_ALERT_WINDOW 权限可从后台启动 Activity
         if (!LaunchProxyActivity.canDrawOverApps(this)) {
-            FileLogger.w("悬浮窗权限未开启，回退到 LaunchProxyActivity（可能被闹钟界面遮挡）")
-            try {
-                startActivity(LaunchProxyActivity.createIntent(this, targetPackage))
-                FileLogger.i("已通过 LaunchProxyActivity 拉起（无悬浮窗权限）: $targetPackage")
-            } catch (e: Exception) {
-                FileLogger.e("拉起失败: $targetPackage", e)
-            }
-            pushLocalNotification("已拉起 $targetPackage")
-            return
+            FileLogger.w("悬浮窗权限未开启，目标 App 可能无法到前台！请在 App 设置中开启悬浮窗权限")
         }
-
-        // 最强方案：通过 TYPE_APPLICATION_OVERLAY 系统级窗口覆盖闹钟全屏界面
-        // overlay 窗口优先级高于所有 Activity，能真正盖住闹钟
-        // 有 SYSTEM_ALERT_WINDOW 权限可绕过 Android 10+ 后台 Activity 启动限制
-        launchWithOverlay(targetPackage, launchIntent)
-    }
-
-    /**
-     * 通过系统级 overlay 窗口拉起目标 App：
-     * 1. 唤醒屏幕
-     * 2. 添加全屏 overlay 窗口（覆盖闹钟全屏界面）
-     * 3. 从 Service 直接 startActivity 启动目标 App（绕过后台启动限制）
-     * 4. 延迟后移除 overlay（此时目标 App 已在前台）
-     */
-    private fun launchWithOverlay(targetPackage: String, launchIntent: Intent) {
-        // 1. 唤醒屏幕
-        wakeUpScreen()
-
-        // 2. 添加全屏 overlay 窗口
-        val wm = getSystemService(WINDOW_SERVICE) as WindowManager
-        var overlayView: View? = null
-        var overlayAdded = false
-
         try {
-            overlayView = View(this).apply {
-                setBackgroundColor(android.graphics.Color.WHITE)
-            }
-            val overlayType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-            } else {
-                @Suppress("DEPRECATION")
-                WindowManager.LayoutParams.TYPE_SYSTEM_ALERT
-            }
-            val params = WindowManager.LayoutParams(
-                WindowManager.LayoutParams.MATCH_PARENT,
-                WindowManager.LayoutParams.MATCH_PARENT,
-                overlayType,
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
-                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                    WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
-                PixelFormat.OPAQUE
-            )
-            // 荣耀等厂商闹钟全屏 Activity 优先级高，overlay 窗口需设最高优先级
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                params.fitInsetsTypes = 0
-            }
-            wm.addView(overlayView, params)
-            overlayAdded = true
-            FileLogger.i("Overlay: 已添加全屏系统窗口，覆盖闹钟界面")
-        } catch (e: Exception) {
-            FileLogger.w("Overlay: 添加窗口失败，直接启动目标 App", e)
-        }
-
-        // 3. 启动目标 App（有 SYSTEM_ALERT_WINDOW 权限，可从后台启动 Activity）
-        launchIntent.addFlags(
-            Intent.FLAG_ACTIVITY_NEW_TASK or
-                Intent.FLAG_ACTIVITY_CLEAR_TOP or
-                Intent.FLAG_ACTIVITY_SINGLE_TOP or
-                Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
-        )
-        try {
-            startActivity(launchIntent)
-            FileLogger.i("Overlay: 已启动目标 App: $targetPackage")
+            val proxyIntent = LaunchProxyActivity.createIntent(this, targetPackage)
+            startActivity(proxyIntent)
+            FileLogger.i("已通过 LaunchProxyActivity 拉起: $targetPackage")
             pushLocalNotification("已拉起 $targetPackage")
         } catch (e: Exception) {
-            FileLogger.e("Overlay: 启动目标 App 失败: $targetPackage", e)
+            FileLogger.e("拉起失败: $targetPackage", e)
             pushLocalNotification("拉起失败: ${e.javaClass.simpleName}: ${e.message}")
-        }
-
-        // 4. 延迟后移除 overlay（让目标 App 有时间到前台）
-        mainHandler.postDelayed({
-            try {
-                if (overlayAdded && overlayView != null) {
-                    wm.removeView(overlayView)
-                    FileLogger.i("Overlay: 已移除系统窗口")
-                }
-            } catch (e: Exception) {
-                FileLogger.w("Overlay: 移除窗口失败", e)
-            }
-            // 二次启动确保目标 App 在最前
-            try {
-                val relaunch = packageManager.getLaunchIntentForPackage(targetPackage)
-                if (relaunch != null) {
-                    relaunch.addFlags(
-                        Intent.FLAG_ACTIVITY_NEW_TASK or
-                            Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
-                            Intent.FLAG_ACTIVITY_SINGLE_TOP
-                    )
-                    startActivity(relaunch)
-                    FileLogger.i("Overlay: 二次拉起确保最前: $targetPackage")
-                }
-            } catch (e: Exception) {
-                FileLogger.w("Overlay: 二次拉起失败", e)
-            }
-        }, 800L)
-    }
-
-    /** 唤醒屏幕 */
-    private fun wakeUpScreen() {
-        try {
-            val pm = getSystemService(POWER_SERVICE) as PowerManager
-            @Suppress("DEPRECATION")
-            val flags = PowerManager.SCREEN_BRIGHT_WAKE_LOCK or
-                PowerManager.ACQUIRE_CAUSES_WAKEUP
-            @Suppress("DEPRECATION")
-            val wakeLock = pm.newWakeLock(flags, "AlarmCheckIn:Launch")
-            wakeLock.acquire(5_000L)
-            FileLogger.d("Overlay: 已唤醒屏幕")
-        } catch (e: Exception) {
-            FileLogger.w("Overlay: 唤醒屏幕失败", e)
         }
     }
 

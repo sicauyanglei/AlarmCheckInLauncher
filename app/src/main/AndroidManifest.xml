@@ -29,6 +29,8 @@
     <!-- 悬浮窗（部分厂商 ROM 需要单独授权） -->
     <uses-permission android:name="android.permission.INTERNAL_SYSTEM_WINDOW"
         tools:ignore="ProtectedPermissions" />
+    <!-- 解除锁屏：让 Activity 覆盖在锁屏之上并自动解锁 -->
+    <uses-permission android:name="android.permission.DISABLE_KEYGUARD" />
 
     <application
         android:allowBackup="true"
