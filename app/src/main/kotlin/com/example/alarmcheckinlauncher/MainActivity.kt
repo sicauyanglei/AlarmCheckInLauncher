@@ -328,6 +328,8 @@ class MainActivity : AppCompatActivity() {
                 }
                 .setNegativeButton(R.string.btn_skip_anyway) { _, _ ->
                     toast(R.string.toast_listener_still_off)
+                    // 即使跳过通知使用权，仍继续到 Step 4（悬浮窗权限）
+                    proceedStartupPermissionChain(STEP_NOTIFICATION_LISTENER_DONE)
                 }
                 .show()
             return
