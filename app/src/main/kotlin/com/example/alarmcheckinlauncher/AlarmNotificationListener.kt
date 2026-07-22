@@ -6,8 +6,6 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
 import android.os.Build
-import android.os.Handler
-import android.os.Looper
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.text.TextUtils
@@ -29,9 +27,6 @@ import java.util.concurrent.TimeUnit
  *  - 拉起成功/失败时额外弹一条本地通知，便于用户直观看到「是否触发」。
  */
 class AlarmNotificationListener : NotificationListenerService() {
-
-    /** 服务侧延迟拉起用的 Handler（服务长驻，不会被销毁，回调可靠触发） */
-    private val relaunchHandler = Handler(Looper.getMainLooper())
 
     override fun onCreate() {
         super.onCreate()
@@ -155,9 +150,9 @@ class AlarmNotificationListener : NotificationListenerService() {
             return
         }
 
-        // 通过透明代理 Activity 拉起目标 App：
+        // 通过全屏代理 Activity 拉起目标 App：
         //  - Android 10+ 限制后台 Service 直接 startActivity 到前台，但 Activity → Activity 不受限
-        //  - 代理 Activity 同时负责唤醒屏幕、越过锁屏
+        //  - 代理 Activity 全屏覆盖闹钟界面，唤醒屏幕、越过锁屏，一次拉起目标 App 到最前面
         try {
             val proxyIntent = LaunchProxyActivity.createIntent(this, targetPackage)
             startActivity(proxyIntent)
@@ -166,33 +161,7 @@ class AlarmNotificationListener : NotificationListenerService() {
         } catch (e: Exception) {
             FileLogger.e("拉起失败: $targetPackage", e)
             pushLocalNotification("拉起失败: ${e.javaClass.simpleName}: ${e.message}")
-            return
         }
-
-        // 服务侧（长驻）安排延迟二次拉起，确保目标 App 覆盖在闹钟全屏界面之上。
-        // 注意：不能放在 LaunchProxyActivity 里做，因为目标 App 到前台后代理 Activity 会被销毁，
-        // postDelayed 回调不会触发。
-        relaunchHandler.removeCallbacksAndMessages(null)
-        relaunchHandler.postDelayed({
-            try {
-                val relaunch = LaunchProxyActivity.createIntent(this@AlarmNotificationListener, targetPackage)
-                startActivity(relaunch)
-                FileLogger.i("服务侧二次拉起 LaunchProxyActivity: $targetPackage")
-            } catch (e: Exception) {
-                FileLogger.w("服务侧二次拉起失败", e)
-            }
-        }, RELAUNCH_DELAY_MS)
-
-        // 第三次拉起（更晚），应对目标 App 启动较慢的情况
-        relaunchHandler.postDelayed({
-            try {
-                val relaunch3 = LaunchProxyActivity.createIntent(this@AlarmNotificationListener, targetPackage)
-                startActivity(relaunch3)
-                FileLogger.i("服务侧三次拉起 LaunchProxyActivity: $targetPackage")
-            } catch (e: Exception) {
-                FileLogger.w("服务侧三次拉起失败", e)
-            }
-        }, RELAUNCH_DELAY_MS_3)
     }
 
     /** 是否为系统/厂商时钟 App 包名 */
@@ -267,11 +236,6 @@ class AlarmNotificationListener : NotificationListenerService() {
         private const val DEBOUNCE_MS = 10_000L
         private const val CHANNEL_ID = "trigger_log"
         private const val NOTIF_ID = 1001
-
-        /** 二次拉起延迟（首次启动后等目标 App 初始化） */
-        private const val RELAUNCH_DELAY_MS = 800L
-        /** 三次拉起延迟（应对目标 App 启动较慢） */
-        private const val RELAUNCH_DELAY_MS_3 = 2000L
 
         private val ALARM_PATTERN = Regex("(?i)(闹钟|alarm|(?<![a-z])alert(?![a-z]))")
 
