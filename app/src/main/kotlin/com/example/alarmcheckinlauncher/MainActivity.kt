@@ -31,6 +31,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var prefs: AppPreferences
 
+    /** 启动权限链续跑标记：从系统设置页返回后从此 step 继续，-1 表示无待续 */
+    private var chainResumeStep: Int = -1
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -52,6 +55,12 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         refreshListenerStatus()
+        // 若启动权限链进行中（例如刚从电池优化设置页返回），继续下一阶段
+        if (chainResumeStep >= 0) {
+            val step = chainResumeStep
+            chainResumeStep = -1
+            proceedStartupPermissionChain(fromStep = step)
+        }
     }
 
     private fun bindViews() {
@@ -224,6 +233,8 @@ class MainActivity : AppCompatActivity() {
         if (fromStep <= STEP_BATTERY_OPT && !isBatteryOptimizationIgnored()) {
             FileLogger.i("启动权限: 请求加入电池优化白名单")
             prefs.startupPermissionPrompted = true
+            // 标记：用户从电池优化设置返回后继续 Step 3（通知使用权）
+            chainResumeStep = STEP_BATTERY_OPT_DONE
             try {
                 val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
                     data = Uri.parse("package:$packageName")
@@ -234,10 +245,12 @@ class MainActivity : AppCompatActivity() {
                 try {
                     startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
                 } catch (e2: Exception) {
+                    // 无法跳转任何设置页，放弃此步，直接继续下一步
+                    chainResumeStep = -1
                     toast(R.string.toast_battery_manual)
+                    proceedStartupPermissionChain(STEP_BATTERY_OPT_DONE)
                 }
             }
-            // 用户返回后 onResume 不会自动继续链，因此不在此处继续 step3，避免一次性跳多个设置页
             return
         }
 
@@ -402,6 +415,7 @@ class MainActivity : AppCompatActivity() {
         private const val STEP_POST_NOTIFICATIONS = 0
         private const val STEP_POST_NOTIFICATIONS_DONE = 1
         private const val STEP_BATTERY_OPT = 1
+        private const val STEP_BATTERY_OPT_DONE = 2
         private const val STEP_NOTIFICATION_LISTENER = 2
     }
 }
