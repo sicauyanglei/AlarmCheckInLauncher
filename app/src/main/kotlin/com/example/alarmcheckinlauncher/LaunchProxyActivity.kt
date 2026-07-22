@@ -79,7 +79,8 @@ class LaunchProxyActivity : Activity() {
         }
     }
 
-    /** 启动目标 App，延迟后再次启动确保覆盖在闹钟全屏界面之上 */
+    /** 启动目标 App。二次/三次拉起由 AlarmNotificationListener 服务侧通过 Handler 安排，
+     *  此处只做首次启动 + finish()。 */
     private fun launchTargetAndBringToFront() {
         val launchIntent = packageManager.getLaunchIntentForPackage(targetPackage)
         if (launchIntent == null) {
@@ -88,44 +89,18 @@ class LaunchProxyActivity : Activity() {
             return
         }
 
-        // 第一次启动：新任务，clear top
         launchIntent.addFlags(
             Intent.FLAG_ACTIVITY_NEW_TASK or
                 Intent.FLAG_ACTIVITY_CLEAR_TOP or
                 Intent.FLAG_ACTIVITY_SINGLE_TOP or
-                Intent.FLAG_ACTIVITY_TASK_ON_HOME
+                Intent.FLAG_ACTIVITY_TASK_ON_HOME or
+                Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
         )
         try {
             startActivity(launchIntent)
-            FileLogger.i("LaunchProxyActivity: 首次 startActivity 成功 $targetPackage")
+            FileLogger.i("LaunchProxyActivity: startActivity 成功 $targetPackage")
         } catch (e: Exception) {
-            FileLogger.e("LaunchProxyActivity: 首次 startActivity 失败 $targetPackage", e)
-            finish()
-            return
-        }
-
-        // 延迟 600ms 后再次启动，确保目标 App 覆盖在闹钟全屏界面之上
-        // 目标 App 首次启动可能较慢，第二次启动会命中已存在的任务并带到前台
-        handler.postDelayed({
-            relaunchToFront()
-        }, RELAUNCH_DELAY_MS)
-    }
-
-    /** 第二次启动目标 App，强制带到最前 */
-    private fun relaunchToFront() {
-        try {
-            val relaunch = packageManager.getLaunchIntentForPackage(targetPackage)
-            if (relaunch != null) {
-                relaunch.addFlags(
-                    Intent.FLAG_ACTIVITY_NEW_TASK or
-                        Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
-                        Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT
-                )
-                startActivity(relaunch)
-                FileLogger.i("LaunchProxyActivity: 二次拉起（REORDER_TO_FRONT）成功 $targetPackage")
-            }
-        } catch (e: Exception) {
-            FileLogger.w("LaunchProxyActivity: 二次拉起失败（忽略，首次已启动）", e)
+            FileLogger.e("LaunchProxyActivity: startActivity 失败 $targetPackage", e)
         }
         finish()
     }
@@ -171,8 +146,6 @@ class LaunchProxyActivity : Activity() {
 
     companion object {
         private const val EXTRA_TARGET_PACKAGE = "target_package"
-        /** 首次启动后等待目标 App 初始化，再二次拉起确保到前台 */
-        private const val RELAUNCH_DELAY_MS = 600L
 
         /** 创建启动 LaunchProxyActivity 的 Intent */
         fun createIntent(context: Context, targetPackage: String): Intent =
