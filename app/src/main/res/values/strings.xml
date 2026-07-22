@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">打卡</string>
+    <string name="app_name">提醒打卡</string>
     <string name="listener_service_label">闹钟监听服务</string>
 
     <string name="title_target_package">目标打卡 App 包名</string>
