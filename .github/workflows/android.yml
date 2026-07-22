@@ -5,6 +5,11 @@ on:
     branches: [ "main", "master" ]
   pull_request:
     branches: [ "main", "master" ]
+  workflow_dispatch:
+
+# 创建 Release 需要写权限
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -29,10 +34,42 @@ jobs:
       - name: Build debug APK
         run: gradle :app:assembleDebug --no-daemon --stacktrace
 
-      - name: Upload debug APK
+      - name: Rename APK with version
+        id: apk
+        run: |
+          mkdir -p artifacts
+          cp app/build/outputs/apk/debug/*.apk artifacts/
+          ls -la artifacts/
+
+      - name: Upload debug APK (artifact)
         uses: actions/upload-artifact@v4
         with:
           name: alarm-checkin-launcher-debug-apk
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: warn
           retention-days: 14
+
+      # 仅 push 到 main 时创建/更新 Release，便于公开下载
+      - name: Create or Update GitHub Release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          TAG="v1.0-debug"
+          # 删除已存在的同名 tag/release（便于持续更新最新构建）
+          gh release delete "$TAG" --yes --cleanup-tag 2>/dev/null || true
+          gh release create "$TAG" artifacts/*.apk \
+            --title "打卡 - 闹钟打卡助手 (Debug)" \
+            --notes "自动构建的 debug 版本。
+
+          ## 功能
+          - 后台监听系统闹钟响铃通知，自动拉起配置的打卡 App
+          - 桌面图标显示为「打卡」
+
+          ## 安装
+          下载下方 .apk 文件安装。首次使用需在 App 内授予通知使用权。
+
+          构建来源：${{ github.sha }}
+          构建时间：$(date -u '+%Y-%m-%d %H:%M UTC')" \
+            --prerelease
