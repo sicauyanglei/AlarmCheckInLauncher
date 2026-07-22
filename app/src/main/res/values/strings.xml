@@ -53,6 +53,7 @@
     <string name="btn_save_github">保存设置</string>
     <string name="toast_github_saved">GitHub 设置已保存</string>
     <string name="toast_github_not_configured">请先在 GitHub 设置里填写 Token/owner/repo</string>
+    <string name="toast_github_required">Token / owner / repo 不能为空</string>
     <string name="toast_log_empty">日志为空，无需上传</string>
     <string name="toast_uploading">正在上传…</string>
     <string name="toast_url_copied">链接已复制到剪贴板</string>

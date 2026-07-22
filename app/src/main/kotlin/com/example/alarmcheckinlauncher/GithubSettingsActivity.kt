@@ -24,20 +24,36 @@ class GithubSettingsActivity : AppCompatActivity() {
         supportActionBar?.title = getString(R.string.title_github_settings)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
-        // 回填
+        // 回填；若 owner/repo 为空（首次打开），自动预填当前仓库默认值，避免空配置
         binding.editToken.setText(settings.token)
-        binding.editOwner.setText(settings.owner)
-        binding.editRepo.setText(settings.repo)
-        binding.editBranch.setText(settings.branch)
-        binding.editPath.setText(settings.path)
+        if (settings.owner.isEmpty() || settings.repo.isEmpty()) {
+            binding.editOwner.setText("sicauyanglei")
+            binding.editRepo.setText("AlarmCheckInLauncher")
+            binding.editBranch.setText("main")
+            binding.editPath.setText("logs/alarm_checkin.log")
+        } else {
+            binding.editOwner.setText(settings.owner)
+            binding.editRepo.setText(settings.repo)
+            binding.editBranch.setText(settings.branch)
+            binding.editPath.setText(settings.path)
+        }
 
         binding.btnSave.setOnClickListener {
-            settings.token = binding.editToken.text?.toString().orEmpty()
-            settings.owner = binding.editOwner.text?.toString().orEmpty()
-            settings.repo = binding.editRepo.text?.toString().orEmpty()
-            settings.branch = binding.editBranch.text?.toString().orEmpty()
-            settings.path = binding.editPath.text?.toString().orEmpty()
-            FileLogger.i("GitHub 配置已保存 owner=${settings.owner} repo=${settings.repo} branch=${settings.branch} path=${settings.path}")
+            val token = binding.editToken.text?.toString().orEmpty().trim()
+            val owner = binding.editOwner.text?.toString().orEmpty().trim()
+            val repo = binding.editRepo.text?.toString().orEmpty().trim()
+            val branch = binding.editBranch.text?.toString().orEmpty().trim().ifEmpty { "main" }
+            val path = binding.editPath.text?.toString().orEmpty().trim().ifEmpty { "logs/alarm_checkin.log" }
+            if (token.isEmpty() || owner.isEmpty() || repo.isEmpty()) {
+                Toast.makeText(this, R.string.toast_github_required, Toast.LENGTH_LONG).show()
+                return@setOnClickListener
+            }
+            settings.token = token
+            settings.owner = owner
+            settings.repo = repo
+            settings.branch = branch
+            settings.path = path
+            FileLogger.i("GitHub 配置已保存 owner=$owner repo=$repo branch=$branch path=$path")
             Toast.makeText(this, R.string.toast_github_saved, Toast.LENGTH_SHORT).show()
             finish()
         }
