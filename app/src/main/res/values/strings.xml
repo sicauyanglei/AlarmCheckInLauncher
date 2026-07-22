@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">打卡</string>
+    <string name="listener_service_label">闹钟监听服务</string>
+
+    <string name="title_target_package">目标打卡 App 包名</string>
+    <string name="hint_target_package">例如：com.alibaba.android.rimet</string>
+    <string name="btn_save_package">保存包名</string>
+
+    <string name="preset_dingtalk">钉钉</string>
+    <string name="preset_wework">企微</string>
+    <string name="preset_feishu">飞书</string>
+
+    <string name="switch_enable_monitor">启用闹钟监听</string>
+
+    <string name="title_listener_status">监听服务状态</string>
+    <string name="btn_grant_permission">授予通知使用权</string>
+
+    <string name="status_listener_on">✅ 已授权，闹钟响铃时会自动拉起打卡 App</string>
+    <string name="status_listener_off">⚠️ 未授权，点击下方按钮开启「打卡」的通知使用权</string>
+
+    <string name="btn_test_launch">立即测试拉起目标 App</string>
+
+    <string name="toast_pkg_empty">请先填写目标 App 包名</string>
+    <string name="toast_pkg_saved">包名已保存</string>
+    <string name="toast_enabled">已启用监听</string>
+    <string name="toast_disabled">已暂停监听</string>
+    <string name="toast_target_not_installed">目标 App 未安装或不可启动</string>
+
+    <string name="tip_usage">使用说明：1) 填写打卡 App 包名并保存；2) 点击「授予通知使用权」开启本应用权限；3) 保持开关打开，闹钟响铃时即会自动拉起打卡 App。\n说明：本应用在桌面显示为「打卡」，实际是闹钟监听器。</string>
+</resources>

@@ -1,0 +1,26 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- 闹钟主体 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,28
+            a22,22 0 1,0 0.01,0
+            M40,30 L30,22
+            M68,30 L78,22
+            M54,42 L54,56 L64,62"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3"
+        android:fillAlpha="0.0" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,34
+            a18,18 0 1,0 0.01,0 Z" />
+    <path
+        android:fillColor="#1976D2"
+        android:pathData="M54,40 L54,54 L62,58"
+        android:strokeColor="#1976D2"
+        android:strokeWidth="2.5" />
+</vector>
