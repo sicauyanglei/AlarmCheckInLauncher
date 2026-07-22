@@ -21,6 +21,14 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- 强制把目标 App 任务移到前台（覆盖在闹钟全屏界面之上） -->
     <uses-permission android:name="android.permission.REORDER_TASKS" />
+    <!-- 系统级窗口覆盖：允许在其他 App 之上显示（覆盖闹钟全屏界面） -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <!-- 管理任务栈（关闭/移动其他 App 任务，需用户授权） -->
+    <uses-permission android:name="android.permission.MANAGE_TASKS"
+        tools:ignore="ProtectedPermissions" />
+    <!-- 悬浮窗（部分厂商 ROM 需要单独授权） -->
+    <uses-permission android:name="android.permission.INTERNAL_SYSTEM_WINDOW"
+        tools:ignore="ProtectedPermissions" />
 
     <application
         android:allowBackup="true"

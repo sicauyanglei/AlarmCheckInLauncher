@@ -63,6 +63,7 @@
     <string name="perm_item_notifications">• 通知权限（前台保活通知）</string>
     <string name="perm_item_battery">• 电池优化白名单（避免被系统杀死）</string>
     <string name="perm_item_notification_listener">• 通知使用权（监听闹钟响铃，需在设置页手动开启）</string>
+    <string name="perm_item_overlay">• 悬浮窗权限（覆盖闹钟全屏界面，让打卡 App 显示在最前）</string>
     <string name="btn_start_grant">开始授权</string>
     <string name="btn_later">稍后</string>
     <string name="toast_startup_permission_done">所需权限已就绪</string>
@@ -73,6 +74,11 @@
     <string name="btn_skip_anyway">跳过（不推荐）</string>
     <string name="toast_listener_still_off">⚠️ 通知使用权仍未开启，闹钟响铃时无法自动拉起打卡 App！请稍后手动开启。</string>
     <string name="toast_listener_now_on">✅ 通知使用权已开启，闹钟监听已激活</string>
+    <!-- 悬浮窗权限引导 -->
+    <string name="title_overlay_required">必须开启悬浮窗权限</string>
+    <string name="msg_overlay_required">为了在闹钟响铃时覆盖闹钟全屏界面、隐藏快手等其他 App，把打卡 App 显示到最前面，必须授予「悬浮窗 / 显示在其他应用上层」权限。\n\n请在接下来打开的设置页中，找到「提醒打卡」并打开开关。</string>
+    <string name="toast_overlay_now_on">✅ 悬浮窗权限已开启，目标 App 可显示到最前</string>
+    <string name="toast_overlay_skipped">⚠️ 悬浮窗权限未开启，目标 App 可能被闹钟界面遮挡</string>
     <string name="toast_battery_fallback">电池优化直接申请未生效，已跳转电池优化列表页，请手动把本 App 设为「不优化」</string>
 
     <string name="toast_pkg_empty">请先填写目标 App 包名</string>

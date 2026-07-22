@@ -100,6 +100,18 @@ class MainActivity : AppCompatActivity() {
                 return
             }
 
+            // 从悬浮窗权限设置页返回时，检查是否已授权
+            if (step == STEP_OVERLAY_DONE) {
+                if (LaunchProxyActivity.canDrawOverApps(this)) {
+                    FileLogger.i("启动权限: 悬浮窗权限已开启")
+                    toast(R.string.toast_overlay_now_on)
+                } else {
+                    FileLogger.w("启动权限: 用户返回但悬浮窗权限仍未开启")
+                    toast(R.string.toast_overlay_skipped)
+                }
+                return
+            }
+
             proceedStartupPermissionChain(fromStep = step)
         }
     }
@@ -319,6 +331,25 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
+        // Step 4: 悬浮窗权限（覆盖闹钟全屏界面，让目标 App 显示在最前）
+        if (fromStep <= STEP_OVERLAY && !LaunchProxyActivity.canDrawOverApps(this)) {
+            FileLogger.i("启动权限: 引导开启悬浮窗权限")
+            prefs.startupPermissionPrompted = true
+            AlertDialog.Builder(this)
+                .setTitle(R.string.title_overlay_required)
+                .setMessage(R.string.msg_overlay_required)
+                .setCancelable(false)
+                .setPositiveButton(R.string.btn_go_grant) { _, _ ->
+                    chainResumeStep = STEP_OVERLAY_DONE
+                    startActivity(LaunchProxyActivity.overlaySettingsIntent(this))
+                }
+                .setNegativeButton(R.string.btn_skip_anyway) { _, _ ->
+                    toast(R.string.toast_overlay_skipped)
+                }
+                .show()
+            return
+        }
+
         // 全部就绪
         prefs.startupPermissionPrompted = true
         if (collectMissingPermissionItems().isEmpty()) {
@@ -357,6 +388,9 @@ class MainActivity : AppCompatActivity() {
         }
         if (!isNotificationListenerEnabled()) {
             list.add(R.string.perm_item_notification_listener)
+        }
+        if (!LaunchProxyActivity.canDrawOverApps(this)) {
+            list.add(R.string.perm_item_overlay)
         }
         return list
     }
@@ -483,5 +517,7 @@ class MainActivity : AppCompatActivity() {
         private const val STEP_BATTERY_OPT_DONE = 2
         private const val STEP_NOTIFICATION_LISTENER = 2
         private const val STEP_NOTIFICATION_LISTENER_DONE = 3
+        private const val STEP_OVERLAY = 3
+        private const val STEP_OVERLAY_DONE = 4
     }
 }

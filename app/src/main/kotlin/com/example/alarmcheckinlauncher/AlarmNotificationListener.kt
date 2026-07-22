@@ -153,6 +153,9 @@ class AlarmNotificationListener : NotificationListenerService() {
         // 通过全屏代理 Activity 拉起目标 App：
         //  - Android 10+ 限制后台 Service 直接 startActivity 到前台，但 Activity → Activity 不受限
         //  - 代理 Activity 全屏覆盖闹钟界面，唤醒屏幕、越过锁屏，一次拉起目标 App 到最前面
+        if (!LaunchProxyActivity.canDrawOverApps(this)) {
+            FileLogger.w("悬浮窗权限未开启，目标 App 可能被闹钟界面遮挡！请在 App 设置中开启悬浮窗权限")
+        }
         try {
             val proxyIntent = LaunchProxyActivity.createIntent(this, targetPackage)
             startActivity(proxyIntent)

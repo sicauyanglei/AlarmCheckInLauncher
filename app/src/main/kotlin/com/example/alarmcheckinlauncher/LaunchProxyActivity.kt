@@ -1,29 +1,33 @@
 package com.example.alarmcheckinlauncher
 
 import android.app.Activity
+import android.app.ActivityManager
 import android.app.KeyguardManager
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
+import android.provider.Settings
+import android.view.View
 import android.view.WindowManager
 
 /**
- * 全屏代理 Activity：
+ * 全屏代理 Activity（最强方案）：
  *  - 闹钟响铃时由 [AlarmNotificationListener] 拉起
- *  - 唤醒屏幕（即使锁屏也能点亮）
- *  - 越过/解除锁屏
- *  - 以全屏不透明界面覆盖闹钟全屏 Activity 和其他 App（如快手）
- *  - 从全屏界面启动目标打卡 App，目标 App 出现在本界面之上 = 最前面
- *  - 启动目标后延迟 finish()，让目标 App 稳定到前台
+ *  - 唤醒屏幕、越过/解除锁屏
+ *  - 全屏不透明覆盖闹钟界面和所有其他 App
+ *  - 通过 ActivityManager 关闭其他 App 任务，确保目标 App 启动时栈最干净
+ *  - 启动目标打卡 App，使其出现在最前面
+ *  - finish() 后用户只看到目标 App
  *
- * 为什么用全屏不透明而非透明？
- *  - 荣耀等厂商闹钟全屏 Activity 有系统级高优先级，透明 Activity 无法覆盖
- *  - 全屏不透明 Activity 配合最高窗口标志，能可靠覆盖闹钟界面
- *  - 目标 App 从本界面启动，必然在本界面之上 = 真正的最前面
+ * 权限要求：
+ *  - SYSTEM_ALERT_WINDOW：系统级覆盖窗口
+ *  - REORDER_TASKS / MANAGE_TASKS：管理任务栈
+ *  - WAKE_LOCK：唤醒屏幕
  */
 class LaunchProxyActivity : Activity() {
 
@@ -59,17 +63,17 @@ class LaunchProxyActivity : Activity() {
             FileLogger.d("LaunchProxyActivity: 检测到锁屏，请求解除锁屏")
             km.requestDismissKeyguard(this, object : KeyguardManager.KeyguardDismissCallback() {
                 override fun onDismissSucceeded() {
-                    FileLogger.i("LaunchProxyActivity: 锁屏已解除，开始拉起目标")
+                    FileLogger.i("LaunchProxyActivity: 锁屏已解除")
                     launchTargetAfterDelay()
                 }
 
                 override fun onDismissError() {
-                    FileLogger.w("LaunchProxyActivity: 解除锁屏失败，仍尝试拉起目标")
+                    FileLogger.w("LaunchProxyActivity: 解除锁屏失败，仍拉起目标")
                     launchTargetAfterDelay()
                 }
 
                 override fun onDismissCancelled() {
-                    FileLogger.w("LaunchProxyActivity: 解除锁屏被取消，仍尝试拉起目标")
+                    FileLogger.w("LaunchProxyActivity: 解除锁屏被取消，仍拉起目标")
                     launchTargetAfterDelay()
                 }
             })
@@ -78,11 +82,38 @@ class LaunchProxyActivity : Activity() {
         }
     }
 
-    /** 延迟 300ms 让本全屏界面稳定显示（覆盖闹钟），再启动目标 App */
+    /** 延迟 400ms 让本全屏界面稳定显示（覆盖闹钟），再清理任务+启动目标 */
     private fun launchTargetAfterDelay() {
         handler.postDelayed({
+            closeOtherAppTasks()
             launchTarget()
-        }, 300L)
+        }, 400L)
+    }
+
+    /**
+     * 关闭其他 App 的任务（如快手、闹钟全屏），让目标 App 启动时栈最干净。
+     * 需要 REORDER_TASKS 权限（普通权限，安装即授予）。
+     */
+    private fun closeOtherAppTasks() {
+        try {
+            val am = getSystemService(ACTIVITY_SERVICE) as ActivityManager
+            // getRunningTasks 自 API 21 起只返回自己的任务，但尝试一下无妨
+            val tasks = am.getRunningTasks(100)
+            FileLogger.d("LaunchProxyActivity: 当前运行任务数=${tasks.size}")
+            for (task in tasks) {
+                val pkg = task.topActivity?.packageName ?: continue
+                // 不关闭自己（com.example.alarmcheckinlauncher）和目标 App
+                if (pkg == packageName || pkg == targetPackage) continue
+                FileLogger.d("LaunchProxyActivity: 尝试关闭任务 pkg=$pkg id=${task.id}")
+                try {
+                    am.moveTaskToFront(task.id, ActivityManager.MOVE_TASK_WITH_HOME)
+                } catch (e: Exception) {
+                    FileLogger.w("LaunchProxyActivity: moveTaskToFront 失败 pkg=$pkg", e)
+                }
+            }
+        } catch (e: Exception) {
+            FileLogger.w("LaunchProxyActivity: closeOtherAppTasks 失败（忽略）", e)
+        }
     }
 
     /** 启动目标 App，使其出现在本全屏界面之上 = 最前面 */
@@ -98,19 +129,44 @@ class LaunchProxyActivity : Activity() {
             Intent.FLAG_ACTIVITY_NEW_TASK or
                 Intent.FLAG_ACTIVITY_CLEAR_TOP or
                 Intent.FLAG_ACTIVITY_SINGLE_TOP or
-                Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+                Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
+                Intent.FLAG_ACTIVITY_TASK_ON_HOME
         )
         try {
             startActivity(launchIntent)
-            FileLogger.i("LaunchProxyActivity: 目标 App 已启动到前台: $targetPackage")
+            FileLogger.i("LaunchProxyActivity: 目标 App 已启动: $targetPackage")
         } catch (e: Exception) {
             FileLogger.e("LaunchProxyActivity: 启动目标 App 失败: $targetPackage", e)
         }
 
-        // 延迟 finish，让目标 App 有时间稳定到前台
+        // 延迟 600ms finish，让目标 App 有时间稳定到前台
         handler.postDelayed({
+            // 最后再尝试 moveTaskToFront 确保目标在最前
+            tryMoveTargetToFront()
             finish()
-        }, 500L)
+        }, 600L)
+    }
+
+    /** 尝试通过 ActivityManager 把目标任务移到最前 */
+    private fun tryMoveTargetToFront() {
+        try {
+            val am = getSystemService(ACTIVITY_SERVICE) as ActivityManager
+            val tasks = am.getRunningTasks(100)
+            val targetTask = tasks.firstOrNull { it.topActivity?.packageName == targetPackage }
+            if (targetTask != null) {
+                am.moveTaskToFront(targetTask.id, ActivityManager.MOVE_TASK_WITH_HOME)
+                FileLogger.i("LaunchProxyActivity: 已将目标任务移到最前 id=${targetTask.id}")
+            } else {
+                FileLogger.w("LaunchProxyActivity: 未找到目标任务（可能仍在启动中）")
+            }
+        } catch (e: Exception) {
+            FileLogger.w("LaunchProxyActivity: moveTaskToFront 失败（忽略）", e)
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        handler.removeCallbacksAndMessages(null)
     }
 
     /** 隐藏系统 UI（状态栏、导航栏），实现真全屏 */
@@ -129,23 +185,18 @@ class LaunchProxyActivity : Activity() {
             } else {
                 @Suppress("DEPRECATION")
                 window.decorView.systemUiVisibility = (
-                    android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
-                        android.view.View.SYSTEM_UI_FLAG_FULLSCREEN or
-                        android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
-                        android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
-                        android.view.View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
-                        android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                    View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
+                        View.SYSTEM_UI_FLAG_FULLSCREEN or
+                        View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+                        View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
+                        View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
+                        View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
                     )
             }
-            FileLogger.d("LaunchProxyActivity: 已隐藏系统UI，全屏显示")
+            FileLogger.d("LaunchProxyActivity: 已隐藏系统UI")
         } catch (e: Exception) {
             FileLogger.w("LaunchProxyActivity: 隐藏系统UI失败", e)
         }
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        handler.removeCallbacksAndMessages(null)
     }
 
     /** 点亮屏幕（闹钟响铃时屏幕可能熄灭） */
@@ -188,6 +239,26 @@ class LaunchProxyActivity : Activity() {
             Intent(context, LaunchProxyActivity::class.java).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 putExtra(EXTRA_TARGET_PACKAGE, targetPackage)
+            }
+
+        /** 检查是否有悬浮窗权限（Android 6+ 需要运行时引导） */
+        fun canDrawOverApps(context: Context): Boolean =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                Settings.canDrawOverlays(context)
+            } else {
+                true
+            }
+
+        /** 创建跳转悬浮窗权限设置页的 Intent */
+        fun overlaySettingsIntent(context: Context): Intent =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:${context.packageName}")
+                )
+            } else {
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                    .setData(Uri.parse("package:${context.packageName}"))
             }
     }
 }
