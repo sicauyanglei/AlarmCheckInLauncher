@@ -17,6 +17,8 @@
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <!-- Android 13+ 前台服务通知需要运行时申请 -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- 闹钟响铃时唤醒屏幕 -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <application
         android:allowBackup="true"
@@ -49,6 +51,14 @@
             android:name=".GithubSettingsActivity"
             android:exported="false"
             android:label="@string/title_github_settings" />
+
+        <!-- 透明代理 Activity：闹钟响铃时唤醒屏幕、越过锁屏、拉起目标 App 到前台 -->
+        <activity
+            android:name=".LaunchProxyActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleInstance"
+            android:theme="@style/Theme.LaunchProxy" />
 
         <!-- 开机自启接收器 -->
         <receiver

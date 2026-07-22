@@ -141,6 +141,7 @@ class AlarmNotificationListener : NotificationListenerService() {
             pushLocalNotification("未拉起：目标包名为空，请在「提醒打卡」内配置")
             return
         }
+        // 先检查目标 App 是否已安装
         val pm = packageManager
         val launchIntent = pm.getLaunchIntentForPackage(targetPackage)
         if (launchIntent == null) {
@@ -148,14 +149,14 @@ class AlarmNotificationListener : NotificationListenerService() {
             pushLocalNotification("未拉起：$targetPackage 未安装或无启动入口")
             return
         }
-        launchIntent.addFlags(
-            Intent.FLAG_ACTIVITY_NEW_TASK or
-                Intent.FLAG_ACTIVITY_CLEAR_TOP or
-                Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
-        )
+
+        // 通过透明代理 Activity 拉起目标 App：
+        //  - Android 10+ 限制后台 Service 直接 startActivity 到前台，但 Activity → Activity 不受限
+        //  - 代理 Activity 同时负责唤醒屏幕、越过锁屏
         try {
-            startActivity(launchIntent)
-            FileLogger.i("拉起成功: $targetPackage")
+            val proxyIntent = LaunchProxyActivity.createIntent(this, targetPackage)
+            startActivity(proxyIntent)
+            FileLogger.i("已通过 LaunchProxyActivity 拉起: $targetPackage")
             pushLocalNotification("已拉起 $targetPackage")
         } catch (e: Exception) {
             FileLogger.e("拉起失败: $targetPackage", e)
