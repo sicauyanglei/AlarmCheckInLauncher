@@ -46,7 +46,6 @@ class LaunchProxyActivity : Activity() {
 
         wakeUpScreen()
         showOverLockScreen()
-        hideSystemUI()
 
         FileLogger.i("LaunchProxyActivity: 全屏覆盖启动，准备拉起 $targetPackage")
 
@@ -80,6 +79,12 @@ class LaunchProxyActivity : Activity() {
         } else {
             launchTargetAfterDelay()
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // decorView 在 onResume 时才保证初始化，在 onCreate 中调用会 NPE
+        hideSystemUI()
     }
 
     /** 延迟 400ms 让本全屏界面稳定显示（覆盖闹钟），再清理任务+启动目标 */
@@ -174,13 +179,17 @@ class LaunchProxyActivity : Activity() {
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 window.setDecorFitsSystemWindows(false)
-                window.insetsController?.let { controller ->
+                val controller = window.insetsController
+                if (controller != null) {
                     controller.hide(
                         android.view.WindowInsets.Type.statusBars() or
                             android.view.WindowInsets.Type.navigationBars()
                     )
                     controller.systemBarsBehavior =
                         android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                    FileLogger.d("LaunchProxyActivity: 已隐藏系统UI")
+                } else {
+                    FileLogger.w("LaunchProxyActivity: insetsController 为 null，跳过隐藏系统UI")
                 }
             } else {
                 @Suppress("DEPRECATION")
@@ -192,8 +201,8 @@ class LaunchProxyActivity : Activity() {
                         View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
                         View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
                     )
+                FileLogger.d("LaunchProxyActivity: 已隐藏系统UI")
             }
-            FileLogger.d("LaunchProxyActivity: 已隐藏系统UI")
         } catch (e: Exception) {
             FileLogger.w("LaunchProxyActivity: 隐藏系统UI失败", e)
         }
