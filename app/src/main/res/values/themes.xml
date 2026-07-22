@@ -8,12 +8,12 @@
         <item name="colorOnSecondary">#FFFFFF</item>
     </style>
 
-    <!-- 透明主题：用于 LaunchProxyActivity，拉起目标 App 后立即消失，用户无感知 -->
+    <!-- 全屏主题：用于 LaunchProxyActivity，覆盖闹钟全屏界面，拉起目标 App 后立即消失 -->
     <style name="Theme.LaunchProxy" parent="Theme.MaterialComponents.DayNight.NoActionBar">
-        <item name="android:windowBackground">@android:color/transparent</item>
-        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/white</item>
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowContentOverlay">@null</item>
-        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
     </style>
 </resources>
