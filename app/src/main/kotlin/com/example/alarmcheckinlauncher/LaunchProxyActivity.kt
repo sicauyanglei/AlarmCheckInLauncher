@@ -106,7 +106,8 @@ class LaunchProxyActivity : Activity() {
             val tasks = am.getRunningTasks(100)
             FileLogger.d("LaunchProxyActivity: 当前运行任务数=${tasks.size}")
             for (task in tasks) {
-                val pkg = task.topActivity?.packageName ?: continue
+                val pkg = task.topActivity?.packageName
+                if (pkg.isNullOrBlank()) continue
                 // 不关闭自己（com.example.alarmcheckinlauncher）和目标 App
                 if (pkg == packageName || pkg == targetPackage) continue
                 FileLogger.d("LaunchProxyActivity: 尝试关闭任务 pkg=$pkg id=${task.id}")

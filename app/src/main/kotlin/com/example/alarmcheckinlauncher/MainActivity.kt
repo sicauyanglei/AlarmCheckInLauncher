@@ -75,6 +75,8 @@ class MainActivity : AppCompatActivity() {
                 if (isNotificationListenerEnabled()) {
                     FileLogger.i("启动权限: 通知使用权已开启")
                     toast(R.string.toast_listener_now_on)
+                    // 继续到 Step 4: 悬浮窗权限
+                    proceedStartupPermissionChain(STEP_NOTIFICATION_LISTENER_DONE)
                 } else {
                     FileLogger.w("启动权限: 用户返回但通知使用权仍未开启")
                     toast(R.string.toast_listener_still_off)
