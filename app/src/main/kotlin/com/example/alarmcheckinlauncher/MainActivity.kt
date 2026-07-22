@@ -34,6 +34,15 @@ class MainActivity : AppCompatActivity() {
     /** 启动权限链续跑标记：从系统设置页返回后从此 step 继续，-1 表示无待续 */
     private var chainResumeStep: Int = -1
 
+    /** 电池优化直接申请是否已尝试过（HONOR 等 ROM 可能直接申请无效，需回退到列表页） */
+    private var batteryOptDirectTried: Boolean = false
+
+    /** 电池优化列表页回退是否已尝试过 */
+    private var batteryOptFallbackTried: Boolean = false
+
+    /** 标记：是否因跳转设置页而离开过 Activity（防止 onResume 立即误触发续链） */
+    private var awaitingSettingsReturn: Boolean = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -55,11 +64,51 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         refreshListenerStatus()
-        // 若启动权限链进行中（例如刚从电池优化设置页返回），继续下一阶段
-        if (chainResumeStep >= 0) {
+        // 仅在确实从设置页返回时（经历过 onPause）才续链，防止 onResume 立即误触发
+        if (chainResumeStep >= 0 && awaitingSettingsReturn) {
+            awaitingSettingsReturn = false
             val step = chainResumeStep
             chainResumeStep = -1
+
+            // 从通知使用权设置页返回时，检查是否已开启并给出明确反馈
+            if (step == STEP_NOTIFICATION_LISTENER_DONE) {
+                if (isNotificationListenerEnabled()) {
+                    FileLogger.i("启动权限: 通知使用权已开启")
+                    toast(R.string.toast_listener_now_on)
+                } else {
+                    FileLogger.w("启动权限: 用户返回但通知使用权仍未开启")
+                    toast(R.string.toast_listener_still_off)
+                }
+                return
+            }
+
+            // 从电池优化设置页返回时，检查是否真正授权；未授权则尝试回退
+            if (step == STEP_BATTERY_OPT_DONE) {
+                if (isBatteryOptimizationIgnored()) {
+                    FileLogger.i("启动权限: 电池优化白名单已加入")
+                    proceedStartupPermissionChain(STEP_BATTERY_OPT_DONE)
+                } else if (!batteryOptFallbackTried) {
+                    // 直接申请未生效（HONOR 等 ROM），回退到列表页
+                    FileLogger.i("启动权限: 电池优化直接申请未生效，回退列表页")
+                    batteryOptFallbackTried = true
+                    fallbackToBatteryOptListPage()
+                } else {
+                    // 直接申请和列表页都已尝试，放弃此步继续下一步
+                    FileLogger.w("启动权限: 电池优化仍未授权，跳过继续下一步")
+                    proceedStartupPermissionChain(STEP_BATTERY_OPT_DONE)
+                }
+                return
+            }
+
             proceedStartupPermissionChain(fromStep = step)
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        // 标记因跳转设置页而离开 Activity，onResume 时据此判断是否为「从设置页返回」
+        if (chainResumeStep >= 0) {
+            awaitingSettingsReturn = true
         }
     }
 
@@ -231,25 +280,21 @@ class MainActivity : AppCompatActivity() {
 
         // Step 2: 电池优化白名单
         if (fromStep <= STEP_BATTERY_OPT && !isBatteryOptimizationIgnored()) {
-            FileLogger.i("启动权限: 请求加入电池优化白名单")
             prefs.startupPermissionPrompted = true
-            // 标记：用户从电池优化设置返回后继续 Step 3（通知使用权）
+            batteryOptDirectTried = true
+            // 标记：用户从电池优化设置返回后由 onResume 检查是否真正授权
             chainResumeStep = STEP_BATTERY_OPT_DONE
+            FileLogger.i("启动权限: 请求加入电池优化白名单（直接申请）")
             try {
                 val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
                     data = Uri.parse("package:$packageName")
                 }
                 startActivity(intent)
             } catch (e: Exception) {
-                FileLogger.w("启动权限: 电池优化申请失败", e)
-                try {
-                    startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
-                } catch (e2: Exception) {
-                    // 无法跳转任何设置页，放弃此步，直接继续下一步
-                    chainResumeStep = -1
-                    toast(R.string.toast_battery_manual)
-                    proceedStartupPermissionChain(STEP_BATTERY_OPT_DONE)
-                }
+                FileLogger.w("启动权限: 电池优化直接申请异常，回退列表页", e)
+                chainResumeStep = -1
+                batteryOptFallbackTried = true
+                fallbackToBatteryOptListPage()
             }
             return
         }
@@ -259,12 +304,17 @@ class MainActivity : AppCompatActivity() {
             FileLogger.i("启动权限: 引导开启通知使用权")
             prefs.startupPermissionPrompted = true
             AlertDialog.Builder(this)
-                .setTitle(R.string.title_startup_permission)
-                .setMessage(getString(R.string.perm_item_notification_listener))
-                .setPositiveButton(R.string.btn_grant_permission) { _, _ ->
+                .setTitle(R.string.title_listener_required)
+                .setMessage(R.string.msg_listener_required)
+                .setCancelable(false)
+                .setPositiveButton(R.string.btn_go_grant) { _, _ ->
+                    // 标记：用户从通知使用权设置返回后检查是否已开启
+                    chainResumeStep = STEP_NOTIFICATION_LISTENER_DONE
                     startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
                 }
-                .setNegativeButton(R.string.btn_later, null)
+                .setNegativeButton(R.string.btn_skip_anyway) { _, _ ->
+                    toast(R.string.toast_listener_still_off)
+                }
                 .show()
             return
         }
@@ -275,6 +325,21 @@ class MainActivity : AppCompatActivity() {
             toast(R.string.toast_startup_permission_done)
         } else {
             toast(R.string.toast_startup_permission_missing)
+        }
+    }
+
+    /** 回退到电池优化列表页，让用户手动把本 App 设为不优化 */
+    private fun fallbackToBatteryOptListPage() {
+        toast(R.string.toast_battery_fallback)
+        chainResumeStep = STEP_BATTERY_OPT_DONE
+        try {
+            startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+        } catch (e: Exception) {
+            FileLogger.w("启动权限: 电池优化列表页也跳转失败", e)
+            toast(R.string.toast_battery_manual)
+            // 无法跳转任何设置页，放弃此步，直接继续下一步
+            chainResumeStep = -1
+            proceedStartupPermissionChain(STEP_BATTERY_OPT_DONE)
         }
     }
 
@@ -417,5 +482,6 @@ class MainActivity : AppCompatActivity() {
         private const val STEP_BATTERY_OPT = 1
         private const val STEP_BATTERY_OPT_DONE = 2
         private const val STEP_NOTIFICATION_LISTENER = 2
+        private const val STEP_NOTIFICATION_LISTENER_DONE = 3
     }
 }
