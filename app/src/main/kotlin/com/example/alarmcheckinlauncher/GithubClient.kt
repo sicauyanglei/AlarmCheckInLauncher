@@ -40,7 +40,8 @@ object GithubClient {
     fun uploadLogFile(
         settings: GithubSettings,
         content: String,
-        commitMessage: String = "chore: upload alarm log"
+        // commit message 带 [skip ci]，避免日志上传触发 GitHub Actions 流水线
+        commitMessage: String = "chore: upload alarm log [skip ci]"
     ): String {
         require(settings.token.isNotEmpty()) { "未配置 Token" }
         // 自动获取 owner（若尚未获取）
