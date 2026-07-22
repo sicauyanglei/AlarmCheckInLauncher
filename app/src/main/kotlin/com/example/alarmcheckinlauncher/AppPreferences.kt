@@ -11,7 +11,7 @@ import androidx.core.content.edit
 class AppPreferences private constructor(private val prefs: android.content.SharedPreferences) {
 
     var targetPackage: String
-        get() = prefs.getString(KEY_TARGET_PKG, "") ?: ""
+        get() = prefs.getString(KEY_TARGET_PKG, DEFAULT_TARGET_PKG) ?: DEFAULT_TARGET_PKG
         set(value) = prefs.edit { putString(KEY_TARGET_PKG, value.trim()) }
 
     var enabled: Boolean
@@ -28,6 +28,9 @@ class AppPreferences private constructor(private val prefs: android.content.Shar
         private const val KEY_TARGET_PKG = "target_package"
         private const val KEY_ENABLED = "enabled"
         private const val KEY_STARTUP_PERMISSION_PROMPTED = "startup_permission_prompted"
+
+        /** 默认目标打卡 App 包名 */
+        private const val DEFAULT_TARGET_PKG = "com.byd.moaais"
 
         @Volatile private var instance: AppPreferences? = null
 
