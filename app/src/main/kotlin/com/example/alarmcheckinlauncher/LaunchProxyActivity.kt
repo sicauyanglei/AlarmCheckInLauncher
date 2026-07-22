@@ -89,6 +89,9 @@ class LaunchProxyActivity : Activity() {
             return
         }
 
+        // 先回到桌面，清除当前其他 App 的界面（如快手视频），让目标 App 干净地显示
+        goHomeFirst()
+
         launchIntent.addFlags(
             Intent.FLAG_ACTIVITY_NEW_TASK or
                 Intent.FLAG_ACTIVITY_CLEAR_TOP or
@@ -103,6 +106,20 @@ class LaunchProxyActivity : Activity() {
             FileLogger.e("LaunchProxyActivity: startActivity 失败 $targetPackage", e)
         }
         finish()
+    }
+
+    /** 回到桌面，清除当前任务栈中的其他 App 界面 */
+    private fun goHomeFirst() {
+        try {
+            val homeIntent = Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_HOME)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            }
+            startActivity(homeIntent)
+            FileLogger.d("LaunchProxyActivity: 已回到桌面，清除其他 App 界面")
+        } catch (e: Exception) {
+            FileLogger.w("LaunchProxyActivity: 回到桌面失败（忽略，继续拉起目标）", e)
+        }
     }
 
     override fun onDestroy() {
