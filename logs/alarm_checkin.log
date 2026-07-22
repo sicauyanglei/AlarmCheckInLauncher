@@ -1,0 +1,16 @@
+==============================
+App 进程启动 / Build=36 / HONOR MAA-AN00
+==============================
+07-22 21:42:27.599 I MainActivity onCreate
+07-22 21:42:27.604 I GuardService 已请求启动
+07-22 21:42:27.864 I GuardService onCreate
+07-22 21:42:27.885 I GuardService onStartCommand
+07-22 21:42:37.889 D GuardService: 监听服务未授权，跳过重绑
+07-22 21:43:15.091 I 保存规则 time=21:44 pkg=com.example.alarmcheckinlauncher label=提醒打卡 id=8726c065-12fb-4750-943d-b03171522e93
+07-22 21:44:15.754 I 保存规则 time=21:44 pkg=com.example.alarmcheckinlauncher label=提醒打卡 id=8726c065-12fb-4750-943d-b03171522e93
+07-22 21:44:55.147 I GitHub Token 已保存
+07-22 21:45:56.746 I 保存规则 time=21:45 pkg=com.byd.moaais label=打卡 id=8726c065-12fb-4750-943d-b03171522e93
+07-22 21:46:25.354 I 保存规则 time=21:47 pkg=com.byd.moaais label=打卡 id=8726c065-12fb-4750-943d-b03171522e93
+07-22 21:47:37.890 D GuardService: 监听服务未授权，跳过重绑
+07-22 21:47:46.838 I 保存规则 time=21:48 pkg=com.byd.moaais label=打卡 id=8726c065-12fb-4750-943d-b03171522e93
+07-22 21:48:05.646 I 用户查看日志
