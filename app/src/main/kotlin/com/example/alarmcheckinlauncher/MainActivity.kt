@@ -3,8 +3,10 @@ package com.example.alarmcheckinlauncher
 import android.app.AlertDialog
 import android.content.ComponentName
 import android.content.Intent
+import android.net.Uri
 import android.os.AsyncTask
 import android.os.Bundle
+import android.os.PowerManager
 import android.provider.Settings
 import android.text.TextUtils
 import android.widget.Toast
@@ -31,6 +33,9 @@ class MainActivity : AppCompatActivity() {
         prefs = AppPreferences.get(this)
         FileLogger.init(this)
         FileLogger.i("MainActivity onCreate")
+
+        // 启动前台保活服务
+        GuardService.start(this)
 
         bindViews()
         refreshListenerStatus()
@@ -141,6 +146,33 @@ class MainActivity : AppCompatActivity() {
 
         // 上传日志到 GitHub
         binding.btnUploadLogGithub.setOnClickListener { uploadLogToGithub() }
+
+        // 加入电池优化白名单（提升保活成功率，国产rom必须）
+        binding.btnBatteryOpt.setOnClickListener { requestIgnoreBatteryOptimizations() }
+    }
+
+    /** 跳转到系统「电池优化」设置，引导用户把本 App 设为不受限制 */
+    private fun requestIgnoreBatteryOptimizations() {
+        val pm = getSystemService(POWER_SERVICE) as PowerManager
+        val alreadyIgnored = pm.isIgnoringBatteryOptimizations(packageName)
+        if (alreadyIgnored) {
+            toast(R.string.toast_battery_already)
+            return
+        }
+        // 优先请求系统弹窗直接加入白名单（部分厂商支持）
+        try {
+            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                data = Uri.parse("package:$packageName")
+            }
+            startActivity(intent)
+        } catch (e: Exception) {
+            // 回退：跳转电池优化列表页
+            try {
+                startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+            } catch (e2: Exception) {
+                toast(R.string.toast_battery_manual)
+            }
+        }
     }
 
     /** 上传日志到 GitHub 仓库（后台线程执行，避免 NetworkOnMainThread） */

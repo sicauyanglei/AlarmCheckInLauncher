@@ -193,6 +193,14 @@
             android:layout_marginTop="6dp"
             android:text="@string/btn_github_settings" />
 
+        <Button
+            android:id="@+id/btnBatteryOpt"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="@string/btn_battery_opt" />
+
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
