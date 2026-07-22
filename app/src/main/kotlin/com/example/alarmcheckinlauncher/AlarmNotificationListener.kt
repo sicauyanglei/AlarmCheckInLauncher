@@ -81,13 +81,20 @@ class AlarmNotificationListener : NotificationListenerService() {
         lastTriggerMs = now
 
         FileLogger.i(">>> 检测到闹钟响铃 pkg=$pkg title=\"$title\"")
-        // 解析通知文本中的时间，匹配规则；无匹配则用默认包名（兼容旧逻辑）
+        // 解析通知文本中的时间，匹配规则；无规则或未命中则拉起默认目标 App（com.byd.moaais）
         val time = parseAlarmTime(title, text, ticker)
         FileLogger.i("解析时间=$time 文本 title=\"$title\" text=\"$text\"")
-        val rule = time?.let { AlarmRuleStore.get(this).match(it) }
+        val rules = AlarmRuleStore.get(this).all()
+        val rule = time?.let { t -> rules.firstOrNull { it.enabled && it.time == t } }
         val target = rule?.targetPackage ?: prefs.targetPackage
         val targetLabel = rule?.appLabel ?: target
-        FileLogger.i("匹配规则: ${if (rule != null) "命中 time=${rule.time} pkg=${rule.targetPackage}" else "未命中规则，使用默认 pkg=$target"}")
+        if (rule != null) {
+            FileLogger.i("命中规则 time=${rule.time} pkg=${rule.targetPackage}")
+        } else if (rules.isEmpty()) {
+            FileLogger.i("未设置任何闹钟规则，使用默认目标 pkg=$target")
+        } else {
+            FileLogger.i("未命中规则（共 ${rules.size} 条），使用默认目标 pkg=$target")
+        }
         pushLocalNotification("闹钟响铃(${time ?: "未知时间"}) → 拉起 $targetLabel")
         launchTarget(target)
     }
