@@ -23,6 +23,16 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".RuleListActivity"
+            android:exported="false"
+            android:label="@string/title_rule_list" />
+
+        <activity
+            android:name=".AppPickerActivity"
+            android:exported="false"
+            android:label="@string/title_app_picker" />
+
         <!--
           闹钟监听服务：通过 NotificationListenerService 监听系统闹钟 App 的通知，
           当检测到「闹钟正在响铃」类通知时，拉起用户配置的打卡 App。

@@ -80,9 +80,44 @@ class AlarmNotificationListener : NotificationListenerService() {
         }
         lastTriggerMs = now
 
-        FileLogger.i(">>> 检测到闹钟响铃 pkg=$pkg title=\"$title\" 准备拉起 target=${prefs.targetPackage}")
-        pushLocalNotification("检测到闹钟响铃（$pkg），开始拉起 ${prefs.targetPackage}")
-        launchTarget(prefs.targetPackage)
+        FileLogger.i(">>> 检测到闹钟响铃 pkg=$pkg title=\"$title\"")
+        // 解析通知文本中的时间，匹配规则；无匹配则用默认包名（兼容旧逻辑）
+        val time = parseAlarmTime(title, text, ticker)
+        FileLogger.i("解析时间=$time 文本 title=\"$title\" text=\"$text\"")
+        val rule = time?.let { AlarmRuleStore.get(this).match(it) }
+        val target = rule?.targetPackage ?: prefs.targetPackage
+        val targetLabel = rule?.appLabel ?: target
+        FileLogger.i("匹配规则: ${if (rule != null) "命中 time=${rule.time} pkg=${rule.targetPackage}" else "未命中规则，使用默认 pkg=$target"}")
+        pushLocalNotification("闹钟响铃(${time ?: "未知时间"}) → 拉起 $targetLabel")
+        launchTarget(target)
+    }
+
+    /**
+     * 从通知文本里解析闹钟时间，返回 "HH:mm"（24 小时制），解析失败返回 null。
+     * 兼容常见格式：「07:00」「7:00」「7:00 AM」「07:00 闹钟」「闹钟 上午 7:00」等。
+     */
+    private fun parseAlarmTime(vararg texts: String?): String? {
+        val combined = texts.joinToString(" ") { it.orEmpty() }
+        // 1) 优先匹配带 AM/PM 或 上午/下午 的 12 小时制
+        val ampmMatch = Regex("(?i)(\\d{1,2}):(\\d{2})\\s*(AM|PM|上午|下午)").find(combined)
+        if (ampmMatch != null) {
+            val h = ampmMatch.groupValues[1].toIntOrNull() ?: return null
+            val m = ampmMatch.groupValues[2].toIntOrNull() ?: return null
+            val suffix = ampmMatch.groupValues[3].lowercase()
+            var hour = h
+            val isPm = suffix == "pm" || suffix == "下午"
+            when {
+                h == 12 && !isPm -> hour = 0
+                h != 12 && isPm -> hour = h + 12
+            }
+            return String.format("%02d:%02d", hour, m)
+        }
+        // 2) 匹配 24 小时制 HH:mm
+        val match = Regex("\\b(\\d{1,2}):(\\d{2})\\b").find(combined) ?: return null
+        val h = match.groupValues[1].toIntOrNull() ?: return null
+        val m = match.groupValues[2].toIntOrNull() ?: return null
+        if (h > 23 || m > 59) return null
+        return String.format("%02d:%02d", h, m)
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {

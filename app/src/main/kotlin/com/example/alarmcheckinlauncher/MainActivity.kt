@@ -96,6 +96,19 @@ class MainActivity : AppCompatActivity() {
             startActivity(launchIntent)
         }
 
+        // 从已安装 App 列表里选择默认 App（点击即填入包名）
+        binding.btnPickApp.setOnClickListener {
+            startActivityForResult(
+                Intent(this, AppPickerActivity::class.java),
+                REQ_PICK_DEFAULT_APP
+            )
+        }
+
+        // 管理闹钟规则（每个时间点对应一个 App）
+        binding.btnManageRules.setOnClickListener {
+            startActivity(Intent(this, RuleListActivity::class.java))
+        }
+
         // 查看日志（弹窗显示，便于排查「闹钟响了没拉起」）
         binding.btnViewLog.setOnClickListener {
             FileLogger.i("用户查看日志")
@@ -147,4 +160,20 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun toast(resId: Int) = Toast.makeText(this, resId, Toast.LENGTH_SHORT).show()
+
+    @Deprecated("使用 registerForActivityResult 也可，这里保持简单")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQ_PICK_DEFAULT_APP && resultCode == RESULT_OK) {
+            val pkg = data?.getStringExtra(AppPickerActivity.EXTRA_PACKAGE) ?: return
+            val label = data?.getStringExtra(AppPickerActivity.EXTRA_LABEL) ?: pkg
+            binding.editTargetPackage.setText(pkg)
+            prefs.targetPackage = pkg
+            toast("已选择：$label")
+        }
+    }
+
+    companion object {
+        private const val REQ_PICK_DEFAULT_APP = 2001
+    }
 }

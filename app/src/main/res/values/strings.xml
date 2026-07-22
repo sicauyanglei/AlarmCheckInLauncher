@@ -6,6 +6,15 @@
     <string name="title_target_package">目标打卡 App 包名</string>
     <string name="hint_target_package">例如：com.alibaba.android.rimet</string>
     <string name="btn_save_package">保存包名</string>
+    <string name="btn_pick_app">从已安装 App 列表选择</string>
+    <string name="btn_manage_rules">闹钟规则（每个时间点对应一个 App）</string>
+
+    <string name="title_rule_list">闹钟规则</string>
+    <string name="title_app_picker">选择 App</string>
+    <string name="hint_search_app">搜索应用名或包名</string>
+    <string name="empty_rules">暂无规则\n点击右下角 + 添加：先选闹钟时间，再选要拉起的 App</string>
+    <string name="btn_add_rule">添加规则</string>
+    <string name="btn_delete_rule">删除规则</string>
 
     <string name="preset_dingtalk">钉钉</string>
     <string name="preset_wework">企微</string>
