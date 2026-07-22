@@ -3,6 +3,7 @@ package com.example.alarmcheckinlauncher
 import android.app.AlertDialog
 import android.content.ComponentName
 import android.content.Intent
+import android.os.AsyncTask
 import android.os.Bundle
 import android.provider.Settings
 import android.text.TextUtils
@@ -131,6 +132,57 @@ class MainActivity : AppCompatActivity() {
         binding.btnClearLog.setOnClickListener {
             FileLogger.clear()
             toast(R.string.toast_log_cleared)
+        }
+
+        // GitHub 上传设置
+        binding.btnGithubSettings.setOnClickListener {
+            startActivity(Intent(this, GithubSettingsActivity::class.java))
+        }
+
+        // 上传日志到 GitHub
+        binding.btnUploadLogGithub.setOnClickListener { uploadLogToGithub() }
+    }
+
+    /** 上传日志到 GitHub 仓库（后台线程执行，避免 NetworkOnMainThread） */
+    private fun uploadLogToGithub() {
+        val settings = GithubSettings.get(this)
+        if (!settings.isComplete()) {
+            toast(R.string.toast_github_not_configured)
+            startActivity(Intent(this, GithubSettingsActivity::class.java))
+            return
+        }
+        val log = FileLogger.read()
+        if (log.isBlank() || log.startsWith("(")) {
+            toast(R.string.toast_log_empty)
+            return
+        }
+        toast(R.string.toast_uploading)
+        AsyncTask.THREAD_POOL_EXECUTOR.execute {
+            try {
+                val url = GithubClient.uploadLogFile(settings, log)
+                runOnUiThread {
+                    FileLogger.i("日志已上传到 GitHub: $url")
+                    AlertDialog.Builder(this)
+                        .setTitle(R.string.title_upload_success)
+                        .setMessage(url)
+                        .setPositiveButton(R.string.btn_copy_url) { _, _ ->
+                            val cm = getSystemService(android.content.ClipboardManager::class.java)
+                            cm.setPrimaryClip(android.content.ClipData.newPlainText("github_log_url", url))
+                            toast(R.string.toast_url_copied)
+                        }
+                        .setNegativeButton(android.R.string.ok, null)
+                        .show()
+                }
+            } catch (e: Exception) {
+                FileLogger.e("日志上传 GitHub 失败", e)
+                runOnUiThread {
+                    AlertDialog.Builder(this)
+                        .setTitle(R.string.title_upload_failed)
+                        .setMessage(e.message ?: e.toString())
+                        .setPositiveButton(android.R.string.ok, null)
+                        .show()
+                }
+            }
         }
     }
 

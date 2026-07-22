@@ -36,6 +36,31 @@
     <string name="btn_clear_log">清空日志</string>
     <string name="toast_log_cleared">日志已清空</string>
 
+    <string name="btn_upload_log_github">上传日志到 GitHub</string>
+    <string name="btn_github_settings">GitHub 上传设置</string>
+    <string name="title_github_settings">GitHub 上传设置</string>
+    <string name="title_github_token">Token（需 repo 写权限）</string>
+    <string name="hint_github_token">ghp_xxx 或 github_pat_xxx</string>
+    <string name="title_github_owner">仓库所有者</string>
+    <string name="hint_github_owner">如 sicauyanglei</string>
+    <string name="title_github_repo">仓库名</string>
+    <string name="hint_github_repo">如 AlarmCheckInLauncher</string>
+    <string name="title_github_branch">分支</string>
+    <string name="hint_github_branch">如 main</string>
+    <string name="title_github_path">日志文件路径</string>
+    <string name="hint_github_path">如 logs/alarm_checkin.log</string>
+    <string name="btn_fill_current_repo">填入当前仓库默认值</string>
+    <string name="btn_save_github">保存设置</string>
+    <string name="toast_github_saved">GitHub 设置已保存</string>
+    <string name="toast_github_not_configured">请先在 GitHub 设置里填写 Token/owner/repo</string>
+    <string name="toast_log_empty">日志为空，无需上传</string>
+    <string name="toast_uploading">正在上传…</string>
+    <string name="toast_url_copied">链接已复制到剪贴板</string>
+    <string name="title_upload_success">上传成功</string>
+    <string name="title_upload_failed">上传失败</string>
+    <string name="btn_copy_url">复制链接</string>
+    <string name="tip_github_token">说明：Token 仅保存在本机应用私有目录，不会上传到任何地方。建议使用仅限本仓库的 fine-grained Token（权限选 Contents: Read and write）。</string>
+
     <string name="toast_pkg_empty">请先填写目标 App 包名</string>
     <string name="toast_pkg_saved">包名已保存</string>
     <string name="toast_enabled">已启用监听</string>

@@ -5,6 +5,9 @@
     <!-- 拉起其他 App 所需的基础权限 -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
+    <!-- 上传日志到 GitHub -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
         android:allowBackup="true"
@@ -32,6 +35,11 @@
             android:name=".AppPickerActivity"
             android:exported="false"
             android:label="@string/title_app_picker" />
+
+        <activity
+            android:name=".GithubSettingsActivity"
+            android:exported="false"
+            android:label="@string/title_github_settings" />
 
         <!--
           闹钟监听服务：通过 NotificationListenerService 监听系统闹钟 App 的通知，
