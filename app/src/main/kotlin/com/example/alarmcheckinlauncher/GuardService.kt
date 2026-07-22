@@ -68,10 +68,18 @@ class GuardService : Service() {
                 FileLogger.d("GuardService: 监听服务未授权，跳过重绑")
                 return
             }
-            // 已授权但可能未连接，请求系统重新绑定
+            // 已授权但可能未连接，请求系统重新绑定。
+            // NotificationListenerService.requestRebind(ComponentName) 是 @SystemApi 隐藏方法，
+            // 公开 SDK 中不可见，需通过反射调用（在浅灰名单中，允许反射）。
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                requestRebind(cn)
-                FileLogger.d("GuardService: 已调用 requestRebind 请求重连监听服务")
+                try {
+                    val clazz = Class.forName("android.service.notification.NotificationListenerService")
+                    val method = clazz.getMethod("requestRebind", ComponentName::class.java)
+                    method.invoke(null, cn)
+                    FileLogger.d("GuardService: 已通过反射调用 requestRebind 请求重连监听服务")
+                } catch (e: NoSuchMethodException) {
+                    FileLogger.w("GuardService: requestRebind 方法不存在（ROM 可能精简），跳过重绑")
+                }
             }
         } catch (e: Exception) {
             FileLogger.w("GuardService 重绑检查失败", e)
