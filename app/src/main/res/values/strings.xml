@@ -57,6 +57,17 @@
     <string name="toast_battery_already">本 App 已在电池白名单中</string>
     <string name="toast_battery_manual">请手动到系统设置把本 App 设为「不受电池优化限制」</string>
 
+    <!-- 启动时统一申请权限 -->
+    <string name="title_startup_permission">申请运行所需权限</string>
+    <string name="msg_startup_permission">为了在闹钟响铃时自动拉起打卡 App，需要授予以下权限：\n\n%1$s\n\n请依次在系统弹窗中点击「允许」。</string>
+    <string name="perm_item_notifications">• 通知权限（前台保活通知）</string>
+    <string name="perm_item_battery">• 电池优化白名单（避免被系统杀死）</string>
+    <string name="perm_item_notification_listener">• 通知使用权（监听闹钟响铃，需在设置页手动开启）</string>
+    <string name="btn_start_grant">开始授权</string>
+    <string name="btn_later">稍后</string>
+    <string name="toast_startup_permission_done">所需权限已就绪</string>
+    <string name="toast_startup_permission_missing">部分权限未授予，相关功能可能无法正常工作</string>
+
     <string name="toast_pkg_empty">请先填写目标 App 包名</string>
     <string name="toast_pkg_saved">包名已保存</string>
     <string name="toast_enabled">已启用监听</string>

@@ -1,16 +1,21 @@
 package com.example.alarmcheckinlauncher
 
+import android.Manifest
 import android.app.AlertDialog
 import android.content.ComponentName
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.AsyncTask
+import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
 import android.text.TextUtils
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import com.example.alarmcheckinlauncher.databinding.ActivityMainBinding
 
 /**
@@ -39,6 +44,9 @@ class MainActivity : AppCompatActivity() {
 
         bindViews()
         refreshListenerStatus()
+
+        // 启动时统一检查并申请所有运行所需权限
+        ensureStartupPermissions()
     }
 
     override fun onResume() {
@@ -151,11 +159,138 @@ class MainActivity : AppCompatActivity() {
         binding.btnBatteryOpt.setOnClickListener { requestIgnoreBatteryOptimizations() }
     }
 
+    /**
+     * 启动时统一检查并申请所有运行所需权限，链式按顺序申请：
+     *  1. POST_NOTIFICATIONS（Android 13+，运行时权限，系统弹窗）
+     *  2. 电池优化白名单（系统弹窗，离开 App 后会自动返回）
+     *  3. 通知使用权（系统限制无法直接申请，跳转设置页引导用户手动开启）
+     *
+     * 说明：
+     *  - 普通权限（INTERNET、QUERY_ALL_PACKAGES、RECEIVE_BOOT_COMPLETED 等）在安装时已自动授予，无需运行时申请。
+     *  - 已授予权限会自动跳过，仅在缺失时引导用户。
+     *  - 首次引导会展示说明弹窗；后续启动如无缺失不再打扰。
+     */
+    private val requestPostNotifications =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            FileLogger.i("启动权限: POST_NOTIFICATIONS granted=$granted")
+            proceedStartupPermissionChain(fromStep = STEP_POST_NOTIFICATIONS_DONE)
+        }
+
+    private fun ensureStartupPermissions() {
+        // 已授予全部所需权限则跳过
+        val missing = collectMissingPermissionItems()
+        if (missing.isEmpty()) {
+            prefs.startupPermissionPrompted = true
+            return
+        }
+        // 首次启动展示说明弹窗；后续启动如仍有缺失则直接进入链式申请，避免重复打扰
+        if (!prefs.startupPermissionPrompted) {
+            AlertDialog.Builder(this)
+                .setTitle(R.string.title_startup_permission)
+                .setMessage(
+                    getString(
+                        R.string.msg_startup_permission,
+                        missing.joinToString("\n") { getString(it) }
+                    )
+                )
+                .setPositiveButton(R.string.btn_start_grant) { _, _ ->
+                    proceedStartupPermissionChain(STEP_INIT)
+                }
+                .setNegativeButton(R.string.btn_later) { _, _ ->
+                    prefs.startupPermissionPrompted = true
+                }
+                .setOnCancelListener { prefs.startupPermissionPrompted = true }
+                .show()
+        } else {
+            // 静默继续链式申请
+            proceedStartupPermissionChain(STEP_INIT)
+        }
+    }
+
+    private fun proceedStartupPermissionChain(fromStep: Int) {
+        // Step 1: POST_NOTIFICATIONS（Android 13+）
+        if (fromStep <= STEP_POST_NOTIFICATIONS &&
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(
+                this, Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            FileLogger.i("启动权限: 请求 POST_NOTIFICATIONS")
+            requestPostNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+            return
+        }
+
+        // Step 2: 电池优化白名单
+        if (fromStep <= STEP_BATTERY_OPT && !isBatteryOptimizationIgnored()) {
+            FileLogger.i("启动权限: 请求加入电池优化白名单")
+            prefs.startupPermissionPrompted = true
+            try {
+                val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                    data = Uri.parse("package:$packageName")
+                }
+                startActivity(intent)
+            } catch (e: Exception) {
+                FileLogger.w("启动权限: 电池优化申请失败", e)
+                try {
+                    startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+                } catch (e2: Exception) {
+                    toast(R.string.toast_battery_manual)
+                }
+            }
+            // 用户返回后 onResume 不会自动继续链，因此不在此处继续 step3，避免一次性跳多个设置页
+            return
+        }
+
+        // Step 3: 通知使用权（无法直接申请，跳转设置页引导）
+        if (fromStep <= STEP_NOTIFICATION_LISTENER && !isNotificationListenerEnabled()) {
+            FileLogger.i("启动权限: 引导开启通知使用权")
+            prefs.startupPermissionPrompted = true
+            AlertDialog.Builder(this)
+                .setTitle(R.string.title_startup_permission)
+                .setMessage(getString(R.string.perm_item_notification_listener))
+                .setPositiveButton(R.string.btn_grant_permission) { _, _ ->
+                    startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                }
+                .setNegativeButton(R.string.btn_later, null)
+                .show()
+            return
+        }
+
+        // 全部就绪
+        prefs.startupPermissionPrompted = true
+        if (collectMissingPermissionItems().isEmpty()) {
+            toast(R.string.toast_startup_permission_done)
+        } else {
+            toast(R.string.toast_startup_permission_missing)
+        }
+    }
+
+    private fun collectMissingPermissionItems(): List<Int> {
+        val list = mutableListOf<Int>()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(
+                this, Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            list.add(R.string.perm_item_notifications)
+        }
+        if (!isBatteryOptimizationIgnored()) {
+            list.add(R.string.perm_item_battery)
+        }
+        if (!isNotificationListenerEnabled()) {
+            list.add(R.string.perm_item_notification_listener)
+        }
+        return list
+    }
+
+    private fun isBatteryOptimizationIgnored(): Boolean {
+        val pm = getSystemService(POWER_SERVICE) as PowerManager
+        return pm.isIgnoringBatteryOptimizations(packageName)
+    }
+
     /** 跳转到系统「电池优化」设置，引导用户把本 App 设为不受限制 */
     private fun requestIgnoreBatteryOptimizations() {
-        val pm = getSystemService(POWER_SERVICE) as PowerManager
-        val alreadyIgnored = pm.isIgnoringBatteryOptimizations(packageName)
-        if (alreadyIgnored) {
+        if (isBatteryOptimizationIgnored()) {
             toast(R.string.toast_battery_already)
             return
         }
@@ -261,5 +396,12 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val REQ_PICK_DEFAULT_APP = 2001
+
+        // 启动权限链式申请步骤常量（值越大表示越靠后，用于跳过已完成步骤）
+        private const val STEP_INIT = 0
+        private const val STEP_POST_NOTIFICATIONS = 0
+        private const val STEP_POST_NOTIFICATIONS_DONE = 1
+        private const val STEP_BATTERY_OPT = 1
+        private const val STEP_NOTIFICATION_LISTENER = 2
     }
 }

@@ -18,10 +18,16 @@ class AppPreferences private constructor(private val prefs: android.content.Shar
         get() = prefs.getBoolean(KEY_ENABLED, true)
         set(value) = prefs.edit { putBoolean(KEY_ENABLED, value) }
 
+    /** 启动权限引导是否已完成（避免每次启动都弹窗打扰用户） */
+    var startupPermissionPrompted: Boolean
+        get() = prefs.getBoolean(KEY_STARTUP_PERMISSION_PROMPTED, false)
+        set(value) = prefs.edit { putBoolean(KEY_STARTUP_PERMISSION_PROMPTED, value) }
+
     companion object {
         private const val PREFS_NAME = "alarm_checkin_prefs"
         private const val KEY_TARGET_PKG = "target_package"
         private const val KEY_ENABLED = "enabled"
+        private const val KEY_STARTUP_PERMISSION_PROMPTED = "startup_permission_prompted"
 
         @Volatile private var instance: AppPreferences? = null
 
