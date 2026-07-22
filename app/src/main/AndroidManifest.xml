@@ -19,6 +19,8 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- 闹钟响铃时唤醒屏幕 -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- 强制把目标 App 任务移到前台（覆盖在闹钟全屏界面之上） -->
+    <uses-permission android:name="android.permission.REORDER_TASKS" />
 
     <application
         android:allowBackup="true"
