@@ -89,11 +89,13 @@ object FileLogger {
     }
 
     /** 读取当前日志全文，供 UI 展示/分享 */
-    fun read(): String = try {
-        val d = dir ?: return "(未初始化)"
-        File(d, FILE_NAME).takeIf { it.exists() }?.readText() ?: "(无日志)"
-    } catch (e: Exception) {
-        "(读取日志失败: ${e.message})"
+    fun read(): String {
+        return try {
+            val d = dir ?: return "(未初始化)"
+            File(d, FILE_NAME).takeIf { it.exists() }?.readText() ?: "(无日志)"
+        } catch (e: Exception) {
+            "(读取日志失败: ${e.message})"
+        }
     }
 
     /** 清空日志 */

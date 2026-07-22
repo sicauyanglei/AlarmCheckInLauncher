@@ -161,6 +161,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun toast(resId: Int) = Toast.makeText(this, resId, Toast.LENGTH_SHORT).show()
 
+    private fun toast(msg: String) = Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+
     @Deprecated("使用 registerForActivityResult 也可，这里保持简单")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
