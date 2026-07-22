@@ -50,9 +50,6 @@ class AlarmNotificationListener : NotificationListenerService() {
         val sbn = sbn ?: return
         val pkg = sbn.packageName ?: return
 
-        // 只对时钟 App 打日志，避免日志被无关通知刷屏
-        if (!isClockApp(pkg)) return
-
         val n = sbn.notification
         val category = n?.category
         val extras = n?.extras
@@ -60,7 +57,14 @@ class AlarmNotificationListener : NotificationListenerService() {
         val text = extras?.getCharSequence(Notification.EXTRA_TEXT)?.toString().orEmpty()
         val ticker = n?.tickerText?.toString().orEmpty()
 
-        FileLogger.d("收到通知 pkg=$pkg category=$category title=\"$title\" text=\"$text\" ticker=\"$ticker\"")
+        // CATEGORY_ALARM 类通知即使不在已知时钟列表也记录日志（方便发现新厂商时钟包名）
+        val isAlarmCategory = category == Notification.CATEGORY_ALARM
+        if (isClockApp(pkg) || isAlarmCategory) {
+            FileLogger.d("收到通知 pkg=$pkg category=$category title=\"$title\" text=\"$text\" ticker=\"$ticker\"")
+        }
+
+        // 非时钟 App 且非 CATEGORY_ALARM 直接忽略
+        if (!isClockApp(pkg) && !isAlarmCategory) return
 
         val prefs = AppPreferences.get(this)
         if (!prefs.enabled) {
@@ -251,7 +255,9 @@ class AlarmNotificationListener : NotificationListenerService() {
             "com.oppo.clock",
             "com.vivo.clock",
             "com.meizu.flyme.alarmclock",
-            "com.huawei.clock"
+            "com.huawei.clock",
+            "com.hihonor.clock",
+            "com.hihonor.deskclock"
         )
 
         @Volatile private var lastTriggerMs: Long = 0L
