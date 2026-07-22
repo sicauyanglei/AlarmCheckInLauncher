@@ -6,11 +6,12 @@ import androidx.core.content.edit
 /**
  * GitHub 上传配置（永久保存在应用私有 SharedPreferences，不进仓库）。
  *
- * - token:  具有 repo 写权限的 Personal Access Token
- * - owner:  仓库所有者（用户名）
- * - repo:   仓库名
- * - branch: 目标分支
- * - path:   日志文件在仓库内的路径（如 logs/alarm_checkin.log）
+ * 简化模式：只需保存 Token，其余（owner/repo/branch/path）由 App 自动推断。
+ *  - token:  具有 repo 写权限的 Personal Access Token
+ *  - owner:  通过 /user API 用 Token 自动获取并缓存
+ *  - repo:   固定为 AlarmCheckInLauncher（本项目仓库）
+ *  - branch: main
+ *  - path:   logs/alarm_checkin.log
  */
 class GithubSettings private constructor(
     private val prefs: android.content.SharedPreferences
@@ -19,33 +20,22 @@ class GithubSettings private constructor(
         get() = prefs.getString(KEY_TOKEN, "") ?: ""
         set(v) = prefs.edit { putString(KEY_TOKEN, v.trim()) }
 
+    /** 通过 Token 自动获取并缓存的用户名；未获取过为空 */
     var owner: String
         get() = prefs.getString(KEY_OWNER, "") ?: ""
         set(v) = prefs.edit { putString(KEY_OWNER, v.trim()) }
 
-    var repo: String
-        get() = prefs.getString(KEY_REPO, "") ?: ""
-        set(v) = prefs.edit { putString(KEY_REPO, v.trim()) }
+    val repo: String get() = "AlarmCheckInLauncher"
+    val branch: String get() = "main"
+    val path: String get() = "logs/alarm_checkin.log"
 
-    var branch: String
-        get() = prefs.getString(KEY_BRANCH, "main") ?: "main"
-        set(v) = prefs.edit { putString(KEY_BRANCH, v.trim().ifEmpty { "main" }) }
-
-    var path: String
-        get() = prefs.getString(KEY_PATH, "logs/alarm_checkin.log") ?: "logs/alarm_checkin.log"
-        set(v) = prefs.edit { putString(KEY_PATH, v.trim().ifEmpty { "logs/alarm_checkin.log" }) }
-
-    /** 关键字段是否都已配置 */
-    fun isComplete(): Boolean =
-        token.isNotEmpty() && owner.isNotEmpty() && repo.isNotEmpty()
+    /** 是否已具备上传条件（Token 已填且 owner 已自动获取） */
+    fun isComplete(): Boolean = token.isNotEmpty() && owner.isNotEmpty()
 
     companion object {
         private const val PREFS_NAME = "github_settings"
         private const val KEY_TOKEN = "token"
         private const val KEY_OWNER = "owner"
-        private const val KEY_REPO = "repo"
-        private const val KEY_BRANCH = "branch"
-        private const val KEY_PATH = "path"
 
         @Volatile private var instance: GithubSettings? = null
 

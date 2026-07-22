@@ -26,87 +26,11 @@
             android:maxLines="1"
             android:layout_marginTop="4dp" />
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="@string/title_github_owner"
-            android:textStyle="bold"
-            android:textSize="14sp" />
-
-        <EditText
-            android:id="@+id/editOwner"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="@string/hint_github_owner"
-            android:inputType="text"
-            android:maxLines="1"
-            android:layout_marginTop="4dp" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="@string/title_github_repo"
-            android:textStyle="bold"
-            android:textSize="14sp" />
-
-        <EditText
-            android:id="@+id/editRepo"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="@string/hint_github_repo"
-            android:inputType="text"
-            android:maxLines="1"
-            android:layout_marginTop="4dp" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="@string/title_github_branch"
-            android:textStyle="bold"
-            android:textSize="14sp" />
-
-        <EditText
-            android:id="@+id/editBranch"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="@string/hint_github_branch"
-            android:inputType="text"
-            android:maxLines="1"
-            android:layout_marginTop="4dp" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="@string/title_github_path"
-            android:textStyle="bold"
-            android:textSize="14sp" />
-
-        <EditText
-            android:id="@+id/editPath"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="@string/hint_github_path"
-            android:inputType="text"
-            android:maxLines="1"
-            android:layout_marginTop="4dp" />
-
-        <Button
-            android:id="@+id/btnFillCurrentRepo"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="@string/btn_fill_current_repo" />
-
         <Button
             android:id="@+id/btnSave"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="16dp"
             android:text="@string/btn_save_github" />
 
         <TextView

@@ -146,7 +146,7 @@ class MainActivity : AppCompatActivity() {
     /** 上传日志到 GitHub 仓库（后台线程执行，避免 NetworkOnMainThread） */
     private fun uploadLogToGithub() {
         val settings = GithubSettings.get(this)
-        if (!settings.isComplete()) {
+        if (settings.token.isEmpty()) {
             toast(R.string.toast_github_not_configured)
             startActivity(Intent(this, GithubSettingsActivity::class.java))
             return

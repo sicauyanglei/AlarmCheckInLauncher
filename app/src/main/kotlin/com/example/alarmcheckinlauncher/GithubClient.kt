@@ -21,14 +21,30 @@ object GithubClient {
 
     private const val API_BASE = "https://api.github.com"
 
+    /** 用 Token 调用 /user 获取登录名，并缓存到 settings。调用方需在后台线程执行。 */
+    fun ensureOwner(settings: GithubSettings): String {
+        if (settings.owner.isNotEmpty()) return settings.owner
+        val url = URL("$API_BASE/user")
+        val (code, resp) = http("GET", url, settings.token, null)
+        if (code != 200) {
+            throw RuntimeException("Token 校验失败 HTTP $code: $resp")
+        }
+        val login = JSONObject(resp).optString("login")
+        if (login.isEmpty()) throw RuntimeException("Token 无法获取用户名")
+        settings.owner = login
+        FileLogger.i("GithubClient 自动获取 owner=$login")
+        return login
+    }
+
     /** 上传/更新文件。调用方需在后台线程执行。 */
     fun uploadLogFile(
         settings: GithubSettings,
         content: String,
         commitMessage: String = "chore: upload alarm log"
     ): String {
-        require(settings.isComplete()) { "GitHub 配置不完整" }
-        val owner = settings.owner
+        require(settings.token.isNotEmpty()) { "未配置 Token" }
+        // 自动获取 owner（若尚未获取）
+        val owner = ensureOwner(settings)
         val repo = settings.repo
         val branch = settings.branch
         val path = settings.path
