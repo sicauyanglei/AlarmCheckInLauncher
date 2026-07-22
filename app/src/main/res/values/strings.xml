@@ -17,9 +17,15 @@
     <string name="btn_grant_permission">授予通知使用权</string>
 
     <string name="status_listener_on">✅ 已授权，闹钟响铃时会自动拉起打卡 App</string>
-    <string name="status_listener_off">⚠️ 未授权，点击下方按钮开启「打卡」的通知使用权</string>
+    <string name="status_listener_off">⚠️ 未授权，点击下方按钮开启「提醒打卡」的通知使用权</string>
 
     <string name="btn_test_launch">立即测试拉起目标 App</string>
+
+    <string name="title_log">运行日志（用于排查闹钟未拉起）</string>
+    <string name="btn_view_log">查看日志</string>
+    <string name="btn_share_log">分享日志</string>
+    <string name="btn_clear_log">清空日志</string>
+    <string name="toast_log_cleared">日志已清空</string>
 
     <string name="toast_pkg_empty">请先填写目标 App 包名</string>
     <string name="toast_pkg_saved">包名已保存</string>

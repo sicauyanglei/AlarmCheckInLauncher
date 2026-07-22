@@ -1,5 +1,6 @@
 package com.example.alarmcheckinlauncher
 
+import android.app.AlertDialog
 import android.content.ComponentName
 import android.content.Intent
 import android.os.Bundle
@@ -27,6 +28,8 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         prefs = AppPreferences.get(this)
+        FileLogger.init(this)
+        FileLogger.i("MainActivity onCreate")
 
         bindViews()
         refreshListenerStatus()
@@ -92,6 +95,40 @@ class MainActivity : AppCompatActivity() {
             launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             startActivity(launchIntent)
         }
+
+        // 查看日志（弹窗显示，便于排查「闹钟响了没拉起」）
+        binding.btnViewLog.setOnClickListener {
+            FileLogger.i("用户查看日志")
+            AlertDialog.Builder(this)
+                .setTitle(R.string.title_log)
+                .setMessage(FileLogger.read())
+                .setPositiveButton(R.string.btn_share_log) { _, _ -> shareLog() }
+                .setNegativeButton(R.string.btn_clear_log) { _, _ ->
+                    FileLogger.clear()
+                    toast(R.string.toast_log_cleared)
+                }
+                .setNeutralButton(android.R.string.cancel, null)
+                .show()
+        }
+
+        // 分享日志（导出给开发者排查）
+        binding.btnShareLog.setOnClickListener { shareLog() }
+
+        // 清空日志
+        binding.btnClearLog.setOnClickListener {
+            FileLogger.clear()
+            toast(R.string.toast_log_cleared)
+        }
+    }
+
+    private fun shareLog() {
+        val log = FileLogger.read()
+        val sendIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_SUBJECT, "提醒打卡 - 运行日志")
+            putExtra(Intent.EXTRA_TEXT, log)
+        }
+        startActivity(Intent.createChooser(sendIntent, getString(R.string.btn_share_log)))
     }
 
     /** 检查本应用的 NotificationListenerService 是否已获授权 */
